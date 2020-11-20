@@ -35,7 +35,7 @@ gini_state_df <- aggregate(revenue ~ state + year,
                         FUN = "gini") %>% rename(gini=revenue) %>% as_tibble() %>% mutate(gini = replace(gini, gini<0.5, NA)) # throwing out RR 1997, where only one record was found and thus gini 0, also throwing out AP 1998 and 1999, where only two entries where found and gini thus <.5
                                                                                       
 # moar data
-PA_df <- read_csv(paste0(here() %>% str_remove("analysis/EqualityEFT_analysis"), "/data/raw/paneldataEFT-BR.csv")) %>% rename(state=ID) 
+PA_df <- read_csv(paste0(here() %>% str_remove("analysis/EqualityEFT_analysis"), "/data/raw/paneldataEFT-BR.csv")) %>% rename(state=state) 
 EFT <- read_csv(paste0(here() %>% str_remove("analysis/EqualityEFT_analysis"), "/data/raw/EFT.csv")) %>% rename(state=X1, legislation=`ICMS-E`, enactment=Enactment) 
 
 # minimal constant to logarithmize 0 values
@@ -75,7 +75,7 @@ event_study_reg_gini_enact <- ES(long_data=full_gini_df %>% data.table::setDT(),
                        anticipation=0,
                        omitted_event_time = -1,
                        # min_control_gap = 3, max_control_gap = 5,
-                       residualize_covariates = TRUE
+                       resstateualize_covariates = TRUE
                        
 )
 
