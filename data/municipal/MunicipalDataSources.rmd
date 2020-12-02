@@ -1,0 +1,89 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Municipal Data Souces and Notes
+
+## MunicipalTaxesRevenue: 
+- Receita tributária - impostos - municipal
+  - Tax revenue - taxes - municipal
+  - Source: Ministry of Finance, National Treasury Secretariat (Min. Fazenda / STN)
+  - Frenquency: Annual from 1985 to 2017
+  - Unit: R $
+  - IPEA website
+   
+## TaxRevenueMunicipal   
+- Receita tributária - municipal
+  - Tax revenue - municipal
+  - Source: Ministry of Finance, National Treasury Secretariat (Min. Fazenda / STN)
+  - Frenquency: Annual from 1985 to 2017
+  - Unit: R $
+
+## RevenueCurrentTransfers
+- Receita - transferências correntes - municipal
+  - Revenue - current transfers - municipal
+  - Source: Ministry of Finance, National Treasury Secretariat (Min. Fazenda / STN)
+  - Frenquency: Annual from 1985 to 2017
+  - Unit: R $
+  
+## CurrentStateTransfers
+- Transferências correntes de tributos estaduais para os municípios
+  - Current transfers of state taxes to the municipalities
+  - Source: Ministry of Finance, National Treasury Secretariat (Min. Fazenda / STN)
+  - Frenquency: Annual from 1985 to 2017
+  - Unit: R $
+  
+  
+## ICMSTransfers
+- Transferências para os municípios referentes ICMS					  - Transfers to the municipalities regarding ICMS
+  - Source: Ministry of Finance, National Treasury Secretariat (Min. Fazenda / STN)
+  - Frenquency: Annual from 1986 to 2017
+  - Unit: R $
+
+
+## ExpensesLabor
+- Despesas por função - trabalho- municipal
+  - Expenses by function - labor- municipal
+  - Source: Ministry of Finance, National Treasury Secretariat (Min. Fazenda / STN)
+  - Frenquency: Annual from 1990 to 2017
+  - Unit: R $  
+  
+## ExpensesAgriculture
+- Despesas por função - agricultura - municipal
+  - Expenses by function - agriculture - municipal
+  - Source: Ministry of Finance, National Treasury Secretariat (Min. Fazenda / STN)
+  - Frenquency: Annual from 1990 to 2017
+  - Unit: R $
+
+## ExpensesSSAssistence
+- Despesas por função - assistência e previdência - municipal
+  - Expenses by function - assistance and social security - municipal
+  - Source: Ministry of Finance, National Treasury Secretariat (Min. Fazenda / STN)
+  - Frenquency: Annual from 1990 to 2017
+  - Unit: R $
+
+## ExpensesEducationCulture
+- Despesas por função - educação e cultura - municipal
+  - Expenses by function - education and culture - municipal
+  - Source: Ministry of Finance, National Treasury Secretariat (Min. Fazenda / STN)
+  - Frenquency: Annual from 1990 to 2017
+  - Unity: R $
+  
+
+## PopulationEstimates
+- População residente - 1º de julho - estimativas
+  - Resident population - July 1 - estimates
+  - Source: Brazilian Institute of Geography and Statistics (IBGE)
+  - Frenquency: Annual from 1992 to 2019
+  - Unit: Inhabitant
+
+## HarvestedArea
+- Área colhida -  total
+  - Area harvested - total
+  - Source: Brazilian Institute of Geography and Statistics (IBGE)
+  - Frenquency: Annual from 1965 to 2010
+  - Unit: Hectare
+  
+  
