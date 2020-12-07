@@ -85,3 +85,32 @@ ES_plot_ATTs(event_study_reg_EFTlegis, lower_event = -3, upper_event = 10) + yla
 ES_plot_ATTs(event_study_reg_EFTlegis, lower_event = -3, upper_event = 10, homogeneous_ATT = TRUE) +   ylab("ATT Estimate (95% CI)")
 
 
+# matching method
+
+library(PanelMatch)
+
+DisplayTreatment(unit.id = "ID_int",
+                 time.id = "year", legend.position = "none",
+                 xlab = "year", ylab = "Country Code",
+                 treatment = "icms_e", data = full_df %>% mutate(ID_int = as.integer(ID %>% as.factor)) %>% as.data.frame()
+                 )
+
+PM.results <- PanelMatch(lag = 4, time.id = "year", unit.id = "ID_int", 
+                         treatment = "icms_e", refinement.method = "mahalanobis", 
+                         data = full_df %>% mutate(ID_int = as.integer(ID %>% as.factor)) %>% as.data.frame(),
+                         match.missing = TRUE, covs.formula = ~ lnAg+lnInd+lnPop+lnInc+lnFed+lnSta+arpa+ama+cer+caa+mat+pan+pam, 
+                         size.match = 5, qoi = "att" ,outcome.var = "lnMun",
+                         lead = 0:4, forbid.treatment.reversal = FALSE)
+
+PE.results <- PanelEstimate(sets = PM.results, data = full_df %>% mutate(ID_int = as.integer(ID %>% as.factor)) %>% as.data.frame())
+
+summary(PE.results)
+plot(PE.results)
+
+
+confidence.level = 0.90
+
+PE.results.10percentCI <- PanelEstimate(sets = PM.results, data = full_df %>% mutate(ID_int = as.integer(ID %>% as.factor)) %>% as.data.frame(), confidence.level = 0.90)
+
+summary(PE.results.10percentCI)
+plot(PE.results.10percentCI)
