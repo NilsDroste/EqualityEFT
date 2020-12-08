@@ -13,7 +13,12 @@ library(here)
 library(eventStudy)
 library(ggpubr)
 
-
+# trouble-shooting lfe installation
+# install.packages("lfe",repos=unique(c(
+#   getOption("repos"),
+#   repos="https://cran.microsoft.com/snapshot/2020-12-04/"
+# )))
+# devtools::install_github("setzler/eventStudy/eventStudy")
 
 # load data
 PA_df <- read_csv(paste0(here() %>% str_remove("analysis/EqualityEFT_analysis"), "/data/raw/paneldataEFT-BR.csv")) # %>% # dirty hack to allow access /data in directory higher than Rproj root
@@ -95,20 +100,20 @@ DisplayTreatment(unit.id = "ID_int",
                  treatment = "icms_e", data = full_df %>% mutate(ID_int = as.integer(ID %>% as.factor)) %>% as.data.frame()
                  )
 
-PM.results <- PanelMatch(lag = 4, time.id = "year", unit.id = "ID_int", 
+PM.results <- PanelMatch(lag = 2, time.id = "year", unit.id = "ID_int", 
                          treatment = "icms_e", refinement.method = "mahalanobis", 
                          data = full_df %>% mutate(ID_int = as.integer(ID %>% as.factor)) %>% as.data.frame(),
                          match.missing = TRUE, covs.formula = ~ lnAg+lnInd+lnPop+lnInc+lnFed+lnSta+arpa+ama+cer+caa+mat+pan+pam, 
                          size.match = 5, qoi = "att" ,outcome.var = "lnMun",
-                         lead = 0:4, forbid.treatment.reversal = FALSE)
+                         lead = 0:10, forbid.treatment.reversal = FALSE
+                         )
 
 PE.results <- PanelEstimate(sets = PM.results, data = full_df %>% mutate(ID_int = as.integer(ID %>% as.factor)) %>% as.data.frame())
 
 summary(PE.results)
 plot(PE.results)
 
-
-confidence.level = 0.90
+get_covariate_balance(PE.results$matched.sets, covariates = c("lnAg", "lnInd", "lnPop", "lnInc", "lnFed", "lnSta"), data = full_df %>% mutate(ID_int = as.integer(ID %>% as.factor)) %>% as.data.frame(), plot=T) 
 
 PE.results.10percentCI <- PanelEstimate(sets = PM.results, data = full_df %>% mutate(ID_int = as.integer(ID %>% as.factor)) %>% as.data.frame(), confidence.level = 0.90)
 
