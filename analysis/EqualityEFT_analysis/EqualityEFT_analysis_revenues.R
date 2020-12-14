@@ -32,10 +32,16 @@ revenue_df <- readxl::read_xls(
 # compute gini coefficient per year and state
 gini_state_df <- aggregate(revenue ~ state + year,
                         data = revenue_df,
-                        FUN = "gini") %>% rename(gini=revenue) %>% as_tibble() %>% mutate(gini = replace(gini, gini<0.5, NA)) # throwing out RR 1997, where only one record was found and thus gini 0, also throwing out AP 1998 and 1999, where only two entries where found and gini thus <.5
+                        FUN = "gini") %>% rename(gini=revenue) %>% as_tibble() %>% mutate(gini = replace(gini, gini<0.7, NA)) # throwing out RR 1997, where only one record was found and thus gini 0, also throwing out AP 1998 and 1999, where only two entries where found and gini thus <.5
+
+######################################################
+# TODO: Currently throwing out all gini < 0.7 !!! NOTE
+######################################################
+
+gini_state_df$gini[is.nan(gini_state_df$gini)] <- NA
                                                                                       
 # moar data
-PA_df <- read_csv(paste0(here() %>% str_remove("analysis/EqualityEFT_analysis"), "/data/raw/paneldataEFT-BR.csv")) %>% rename(state=state) 
+PA_df <- read_csv(paste0(here() %>% str_remove("analysis/EqualityEFT_analysis"), "/data/raw/paneldataEFT-BR.csv")) %>% rename(state=ID) 
 EFT <- read_csv(paste0(here() %>% str_remove("analysis/EqualityEFT_analysis"), "/data/raw/EFT.csv")) %>% rename(state=X1, legislation=`ICMS-E`, enactment=Enactment) 
 
 # minimal constant to logarithmize 0 values
@@ -75,7 +81,7 @@ event_study_reg_gini_enact <- ES(long_data=full_gini_df %>% data.table::setDT(),
                        anticipation=0,
                        omitted_event_time = -1,
                        # min_control_gap = 3, max_control_gap = 5,
-                       resstateualize_covariates = TRUE
+                       residualize_covariates = TRUE
                        
 )
 
@@ -85,7 +91,7 @@ ES_plot_ATTs(event_study_reg_gini_enact, lower_event = -3, upper_event = 10) + y
 
 ES_plot_ATTs(event_study_reg_gini_enact, lower_event = -3, upper_event = 10, homogeneous_ATT = TRUE) +   ylab("ATT Estimate (95% CI)")
 
-
+# legislation
 event_study_reg_gini_legis <- ES(long_data=full_df %>% data.table::setDT(), outcomevar="lnGini",
                            unit_var="state", cal_time_var="year",
                            onset_time_var="legislation", cluster_vars="state",
@@ -107,4 +113,33 @@ ES_plot_ATTs(event_study_reg_gini_legis, lower_event = -3, upper_event = 10) + y
 ES_plot_ATTs(event_study_reg_gini_legis, lower_event = -3, upper_event = 10, homogeneous_ATT = TRUE) +   ylab("ATT Estimate (95% CI)")
 
 
+# matching method
+
+library(PanelMatch)
+
+DisplayTreatment(unit.id = "ID_int",
+                 time.id = "year", legend.position = "none",
+                 xlab = "year", ylab = "Country Code",
+                 treatment = "icms_e", data = full_gini_df %>% filter(!state=="DF") %>% mutate(ID_int = as.integer(state %>% as.factor)) %>% as.data.frame()
+)
+
+PM.results <- PanelMatch(lag = 4, time.id = "year", unit.id = "ID_int", 
+                         treatment = "icms_e", refinement.method = "mahalanobis", 
+                         data = full_gini_df %>% mutate(ID_int = as.integer(state %>% as.factor)) %>% as.data.frame(),
+                         match.missing = TRUE, covs.formula = ~ lnAg+lnInd+lnPop+lnInc+lnFed+lnSta+arpa+ama+cer+caa+mat+pan+pam, 
+                         size.match = 5, qoi = "att" ,outcome.var = "gini",
+                         lead = 0:10, forbid.treatment.reversal = FALSE
+)
+
+PE.results <- PanelEstimate(sets = PM.results, data = full_gini_df %>% mutate(ID_int = as.integer(state %>% as.factor)) %>% as.data.frame())
+
+summary(PE.results)
+plot(PE.results)
+
+get_covariate_balance(PE.results$matched.sets, covariates = c("lnAg", "lnInd", "lnPop", "lnInc", "lnFed", "lnSta"), data = full_df %>% mutate(ID_int = as.integer(state %>% as.factor)) %>% as.data.frame(), plot=T) 
+
+PE.results.10percentCI <- PanelEstimate(sets = PM.results, data = full_gini_df %>% mutate(ID_int = as.integer(state %>% as.factor)) %>% as.data.frame(), confidence.level = 0.90)
+
+summary(PE.results.10percentCI)
+plot(PE.results.10percentCI)
 
