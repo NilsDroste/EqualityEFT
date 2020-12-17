@@ -166,7 +166,7 @@ DisplayTreatment(unit.id = "ID_int",
                  treatment = "icms_e_enact", data = full_df_ext %>% mutate(ID_int = as.integer(state %>% as.factor)) %>% as.data.frame()
 )
 
-PM.results_ext <- PanelMatch(lag = 2, time.id = "year", unit.id = "ID_int", 
+PM.results_ext <- PanelMatch(lag = 5, time.id = "year", unit.id = "ID_int", 
                          treatment = "icms_e_enact", refinement.method = "mahalanobis", 
                          data = full_df_ext %>% mutate(ID_int = as.integer(state %>% as.factor)) %>% as.data.frame(),
                          match.missing = TRUE, covs.formula = ~ lnAg+lnExtrInd+lnTransInd+lnPop+lnFed+lnSta+arpa+ama+cer+caa+mat+pan+pam, 
@@ -179,3 +179,7 @@ PE.results <- PanelEstimate(sets = PM.results_ext, data = full_df_ext %>% mutate
 summary(PE.results)
 plot(PE.results)
 
+
+# DID Sant'Anna Callaway
+install.packages("did")
+library(did)
