@@ -1,3 +1,7 @@
+library(tidyverse)
+library(here)
+
+
 # data wrangling
 
 PA_data_path <- "C://Users//Nils//Box//papers//published//Droste_etal_2017_EFT-Brazil//data//CU_i_upd.xlsx"
@@ -30,7 +34,7 @@ PA_data <- bind_rows(
   readxl::read_excel(PA_data_path,
                      range = "Alagoas!A85:N114", col_names = F),
   readxl::read_excel(PA_data_path,
-                     range = "Sergipe!A68:N95", col_names = F),
+                     range = "Sergipe!A68:N97", col_names = F),
   readxl::read_excel(PA_data_path,
                      range = "Bahia!A299:N328", col_names = F),
   readxl::read_excel(PA_data_path,
@@ -80,8 +84,8 @@ EFT <-
 
 EFT_df <-
   left_join(cbind(
-    state = rep(EFT$state, times = 1, each = length(c(1991:2014))),
-    year = c(1991:2014)
+    state = rep(EFT$state, times = 1, each = length(c(1985:2014))),
+    year = c(1985:2014)
   ) %>% as_tibble() %>% mutate(year = year %>% as.numeric),
   EFT) %>% mutate(
     icms_e_leg = case_when(year < legislation ~ 0, year >= legislation ~ 1),
@@ -90,14 +94,21 @@ EFT_df <-
 
 arpa <- c("RO", "AC", "AM", "RR", "PA", "AP", "MT")
 
-pop_dens_data <-
+pop_data <-
   readxl::read_excel(
-    "C://Users//Nils//Box//papers//published//Droste_etal_2017_EFT-Brazil//data//POP.xlsx",
+    "C:\\Users\\Nils\\Box\\papers\\work_in_progress\\Cooperman_etal_2021_EqualityEFT\\repo\\data\\state\\population\\ipeadata_22-02-2021-05-09.xls",
     sheet = 1,
-    range = "A31:AB55",
     col_names = T
-  ) %>% pivot_longer(-Year, names_to = "state", values_to = "popdens") %>% select(state, year =
-                                                                                    Year, popdens) %>% arrange (state, year) %>% mutate(year = year %>% as.numeric())
+  ) %>% select(-Codigo, -Estado) %>% pivot_longer(-Sigla, names_to = "year", values_to = "population") %>% select(state= Sigla, year = year, population) %>% arrange (state, year) 
+
+area_data <- readxl::read_excel(
+  "C:\\Users\\Nils\\Box\\papers\\work_in_progress\\Cooperman_etal_2021_EqualityEFT\\repo\\data\\state\\area\\Areas_MU_UF_RE_BR.xls",
+  sheet = "UF",
+  col_names = T
+) %>% select(state = NM_ESTADO_SIGLA, area = AR_MUN_2010)
+
+pop_dens_data<- left_join(pop_data, area_data) %>% mutate(popdens= population/area, year= year %>% as.numeric())
+
 
 biomas  <-
   readxl::read_excel(
@@ -243,13 +254,13 @@ transInd_value_added_2004 <- bind_rows(
   here(econ_data_path, "1985-2004", files_till_2004[27]) %>% unzip() %>% readxl::read_excel(range = "Ind Transformação!A56:G76") %>% mutate(state= files_till_2004[27] %>% str_remove(".zip"))
 )
 
-value_added_2004 <- tot_value_added_2004 %>% select(year=ANO, Total_value_added = `VALOR ADICIONADO PREÇO CORRENTE`, state) %>% 
-  left_join(ag_value_added_2004 %>% select(year=ANO, Agricultural_value_added = `VALOR ADICIONADO PREÇO CORRENTE`, state)) %>% 
-  left_join(extr_value_added_2004 %>% select(year=ANO, Extr_Ind_value_added = `VALOR ADICIONADO PREÇO CORRENTE`, state)) %>% 
-  left_join(transInd_value_added_2004 %>% select(year=ANO, Trans_Ind_value_added = `VALOR ADICIONADO PREÇO CORRENTE`, state)) %>% 
-  mutate(share_ag_value_added = (Agricultural_value_added/Total_value_added)*100, 
-         share_extr_ind_value_added = (Extr_Ind_value_added/Total_value_added)*100,
-         share_trans_ind_value_added = (Trans_Ind_value_added/Total_value_added)*100) %>% 
+value_added_2004 <- tot_value_added_2004 %>% select(year=ANO, total_value_added = `VALOR ADICIONADO PREÇO CORRENTE`, state) %>% 
+  left_join(ag_value_added_2004 %>% select(year=ANO, agricultural_value_added = `VALOR ADICIONADO PREÇO CORRENTE`, state)) %>% 
+  left_join(extr_value_added_2004 %>% select(year=ANO, extr_Ind_value_added = `VALOR ADICIONADO PREÇO CORRENTE`, state)) %>% 
+  left_join(transInd_value_added_2004 %>% select(year=ANO, trans_Ind_value_added = `VALOR ADICIONADO PREÇO CORRENTE`, state)) %>% 
+  mutate(share_ag_value_added = (agricultural_value_added/total_value_added)*100, 
+         share_extr_ind_value_added = (extr_Ind_value_added/total_value_added)*100,
+         share_trans_ind_value_added = (trans_Ind_value_added/total_value_added)*100) %>% 
   left_join(as.data.frame(
     cbind(FullName = c("Acre","Alagoas","Amazonas","Amapa","Bahia","Ceara","Distrito_Federal","Espirito_Santo","Goias","Maranhao","Mata_Grosso","Mata_Grosso_do_Sul","Minas_Gerais","Para","Paraiba","Parana","Pernambuco","Piaui","Rio_de_Janeiro","Rio_Grande_do_Norte","Rio_Grande_do_Sul","Rondonia","Roraima","Santa_Catarina","Sao_Paulo","Sergipe","Tocantins"),
           Abbreviation = c("AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"))),
@@ -379,13 +390,13 @@ transInd_value_added_2018 <- bind_rows(
   here(econ_data_path, "2002-2018", "ods", "Tabela32.ods") %>% readODS::read_ods(sheet = "Tabela32_4", skip=49) %>% slice(1:17) %>% mutate(state = "Distrito Federal"),
 ) %>% filter(ANO>2004)
 
-value_added_2018 <- tot_value_added_2018 %>% select(year=ANO, Total_value_added = `VALOR A PREÇO CORRENTE`, state) %>% 
-  left_join(ag_value_added_2018 %>% select(year=ANO, Agricultural_value_added = `VALOR A PREÇO CORRENTE`, state)) %>% 
-  left_join(extr_ind_value_added_2018 %>% select(year=ANO, Extr_Ind_value_added = `VALOR A PREÇO CORRENTE`, state)) %>% 
-  left_join(transInd_value_added_2018 %>% select(year=ANO, Trans_Ind_value_added = `VALOR A PREÇO CORRENTE`, state)) %>% 
-  mutate(share_ag_value_added = (Agricultural_value_added/Total_value_added)*100, 
-         share_extr_ind_value_added = (Extr_Ind_value_added/Total_value_added)*100,
-         share_trans_ind_value_added = (Trans_Ind_value_added/Total_value_added)*100) %>% 
+value_added_2018 <- tot_value_added_2018 %>% select(year=ANO, total_value_added = `VALOR A PREÇO CORRENTE`, state) %>% 
+  left_join(ag_value_added_2018 %>% select(year=ANO, agricultural_value_added = `VALOR A PREÇO CORRENTE`, state)) %>% 
+  left_join(extr_ind_value_added_2018 %>% select(year=ANO, extr_Ind_value_added = `VALOR A PREÇO CORRENTE`, state)) %>% 
+  left_join(transInd_value_added_2018 %>% select(year=ANO, trans_Ind_value_added = `VALOR A PREÇO CORRENTE`, state)) %>% 
+  mutate(share_ag_value_added = (agricultural_value_added/total_value_added)*100, 
+         share_extr_ind_value_added = (extr_Ind_value_added/total_value_added)*100,
+         share_trans_ind_value_added = (trans_Ind_value_added/total_value_added)*100) %>% 
   left_join(as.data.frame(
       cbind(FullName = c("Acre","Alagoas","Amazonas","Amapa","Bahia","Ceara","Distrito Federal","Espirito Santo","Goias","Maranhao","Mato Grosso","Mato Grosso do Sul","Minas Gerais","Para","Paraiba","Parana","Pernambuco","Piaui","Rio de Janeiro","Rio Grande do Norte","Rio Grande do Sul","Rondonia","Roraima","Santa Catarina","Sao Paulo","Sergipe","Tocantins"),
             Abbreviation = c("AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"))),
@@ -396,14 +407,8 @@ value_added <- bind_rows(value_added_2004, value_added_2018) %>% mutate(FullName
 
 
 # joining everything
-complete_df <- PA_data %>% left_join(EFT_df) %>% mutate(arpa = case_when(state %in% arpa ~ 1, !state %in% arpa ~0)) %>% left_join(biomas) %>% left_join(pop_dens_data) %>% left_join(value_added %>% select(state,year,starts_with("share")),by = c("year", "state"))
+complete_df <- PA_data %>% left_join(EFT_df) %>% mutate(arpa = case_when(state %in% arpa ~ 1, !state %in% arpa ~0)) %>% left_join(biomas) %>% left_join(pop_dens_data) %>% left_join(value_added %>% select(state,year,total_value_added,starts_with("share")),by = c("year", "state")) %>% mutate(icms_e_leg=replace_na(0), icms_e_leg=replace_na(0))
 
 # write_out
 save(complete_df, file="C://Users//Nils//Box//papers//work_in_progress//Cooperman_etal_2021_EqualityEFT//repo//data//completed_sets//State_panel_data.RData")
 
-# minimal constant to logarithmize 0 values
-const<-min(complete_df$mun[which(complete_df$mun > 0)])*0.5
-const2<-min(complete_df$sta[which(complete_df$sta > 0)])*0.5
-
-# create full dataset
-full_df <- left_join(PA_df, EFT) %>% mutate(lnMun=log(mun+const), lnSta=log(sta+const2), lnFed=log(fed), lnTot=log(tot), lnAg=log(agr), lnInd=log(ind), lnPop=log(pop), lnInc=log(inc), year=as.integer(year), legislation=as.integer(legislation), enactment=as.integer(enactment))

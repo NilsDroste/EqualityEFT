@@ -1,0 +1,37 @@
+# Data sources, state data:
+
+## protected areas: 
+
+currently a compilation of national UC data and state UC data as in Droste *et al.* 2017 Env POl Gov.
+  
+## value added / regional accounts
+
+***IBGE***
+
+Fornece estimativas do Produto Interno Bruto - PIB de cada Unidade da Federação, pelas óticas da produção e da renda, coerentes, comparáveis entre si e compatíveis com os resultados do Sistema de Contas Nacionais - SCN.
+
+www.ibge.gov.br/estatisticas/economicas/contas-nacionais/9054-contas-regionais-do-brasil.html
+
+
+## population
+
+***IPEADATA***
+
+População residente - 1º de julho - projeção
+Fonte: Instituto Brasileiro de Geografia e Estatística
+Frequência: Anual de 1980 até 2060
+Unidade: Habitante
+www.ipeadata.gov.br
+
+
+## area
+
+***IBGE***
+
+As estimativas da população residente para os 5.568 municípios produzidas pelo IBGE consideram a situação atualizada da Divisão Político‐Administrativa Brasileira – DPA.
+
+edicao 2010
+
+www.ibge.gov.br/geociencias/organizacao-do-territorio/estrutura-territorial/15761-areas-dos-municipios.html
+
+
