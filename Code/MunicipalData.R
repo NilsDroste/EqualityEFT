@@ -7,6 +7,8 @@ library(tidyverse)
 library(here)
 library(sf)
 library(geobr)
+library(rgdal)
+library(s2)
 
 CurrentStateTransfers <- read_csv(here("data", "municipal", "CurrentStateTransfers.csv")) %>% 
   rename(Codigo = Código) %>% 
@@ -106,58 +108,114 @@ save(data, file = here("data", "municipal", "muni_merged.rda"))
 ################# EFT shapefiles
 load(here("..", "..", "..", "Dropbox", "EFT_Shape", "Todas", "eft.rda"))
 load(here("..", "..", "..", "Dropbox", "EFT_Shape", "Todas", "muni.rda"))
-todas <- readOGR(here("..", "..", "..", "Dropbox", "EFT_Shape", "Todas"), layer = "ucstodas")
-proj4string(todas) <- CRS("EPSG:4618")
-eft <- st_as_sf(todas)
-eft <- st_transform(eft, "SIRGAS 2000")
+load(here("..", "..", "..", "Dropbox", "EFT_Shape", "Todas", "states.rda"))
 
-no_axis <- theme(axis.title=element_blank(),
-                 axis.text=element_blank(),
-                 axis.ticks=element_blank())
-
-p <- ggplot() 
-p <- p + geom_sf(data=eft, fill="#2D3E50", color="#FEBF57", size= 0.3, show.legend = FALSE)
-#p <- p +  labs(subtitle="Municipalities", size=8) 
-p <- p +  theme_minimal() + no_axis
-p <- p + geom_sf(data = b, color = "red", alpha =0.4)
-#p <- p + geom_sf(data = eft, color = "green")
-p
+todas <- readOGR(here("Todas"), layer = "ucstodas")
+proj4string(todas) <- CRS("SIRGAS 2000")
+eft <- st_as_sf(todas) %>% 
+  st_make_valid()
 
 
-munis <- st_read(here("..", "..", "..", "Dropbox", "EFT_Shape", "br_municipios", "BR_Municipios_2019.shp"), package="sf", stringsAsFactors = FALSE)
+min(eft$ANO_CRIA6)
+years <- seq(1990, 2019, 1)
 
 
 
+municipios <- unique(muni$code_muni)
 
-
-
-eft <- st_read(here("..", "..", "..", "Dropbox", "EFT_Shape", "Todas", "ucstodas.shp"), package="sf")
-
-eft <- st_read(here("..", "..", "..", "Dropbox", "EFT_Shape", "Municipal","Integral", "ucsmi.shp"), package="sf")
-
-uni <- st_read(here("..", "..", "..", "Dropbox", "EFT_Shape", "Municipal","Integral", "ucsmi.shp"), package="sf")
-
-
-data_population <- tibble()
-for(i in 1991){
-  dat <- populacao_municipios(i)  
-  
-  
+sf_use_s2(FALSE)
+robust_eft <- function(muni){
+  tryCatch({intersection <- st_intersection(muni, eft) %>%
+    mutate(land_m2  = geom %>% st_zm() %>% st_area(),
+           ANO_CRIA6 = as.double(as.character(ANO_CRIA6)),
+           year = case_when(ANO_CRIA6 < 1990 ~ 1990,
+                            TRUE ~ ANO_CRIA6)) %>%
+    group_by(ESFERA5, year) %>% 
+    summarize(land_m2  = sum(land_m2)) %>% 
+    as_tibble() %>% 
+    dplyr::select(-geom) %>% 
+    mutate(code_muni = municipios[i])
+  if(dim(intersection)[1]==0){
+    intersection <- tibble(ESFERA5 = NA, year = NA, land_m2 = NA, code_muni = municipios[i])
+  }
+  intersection
+  },
+  error = function(e) {tibble(ESFERA5 = "Error", year = NA, land_m2 = NA, code_muni = muni$code_muni)}
+  )
 }
 
-ipea_serie_carrega
-
-all_series <- available_series(language = c("en")) #%>% 
-  filter(status == "Active" & freq == "Yearly")
-
-territories <- available_territories(language = c("en"))
-
-states <- territories %>% 
-  filter(uname == "States")
-
-munis <- territories %>% 
-  filter(uname != "States" & uname != "Brazil" & uname != "State/Metropolitan region") %>%
-  filter(tcode )
+municipality_eft <- tibble()
+for(i in 1:length(municipios)){
+  muni_sub <- muni %>% 
+    filter(code_muni ==municipios[i])
+  sub <- robust_eft(muni_sub)
+  municipality_eft <- bind_rows(municipality_eft, sub)
+}
+save(municipality_eft, file = here("..", "..", "..", "Dropbox", "EFT_Shape", "Todas","eft_intersected.rda"))
 
 
-transfers <- ipeadata(code = "RTRCOESTM")
+
+##### now this has to be reshaped and merged to other municipal data
+load(here("data", "municipal", "muni_merged.rda"))
+load(here("..", "..", "..", "Dropbox", "EFT_Shape", "Todas","eft_intersected.rda"))
+
+efts <- municipality_eft %>% 
+  filter(is.na(ESFERA5)==FALSE) %>% 
+  pivot_wider(id_cols = c(code_muni,year), names_from = ESFERA5, values_from = land_m2) %>% 
+  mutate(FederalConsFounded = case_when(is.na(federal)==FALSE ~1,
+                                     TRUE ~ 0),
+         StateConsFounded = case_when(is.na(estadual)==FALSE ~1,
+                                   TRUE ~ 0),
+         
+         MuniConsFounded = case_when(is.na(municipal)==FALSE ~1,
+                                     TRUE ~ 0),
+         year = as.double(as.character(year))) %>% 
+  rename(Codigo = code_muni,
+         Year = year)
+
+data <- data %>% 
+  mutate(Year = as.double(as.character(Year))) %>% 
+  left_join(efts, by = c("Codigo", "Year")) %>% 
+  mutate(federal = as.double(as.character(federal)),
+         federal = case_when(is.na(federal)==TRUE ~ 0,
+                             TRUE ~ federal),
+         estadual = as.double(as.character(estadual)),
+         estadual = case_when(is.na(estadual)==TRUE ~ 0,
+                             TRUE ~ estadual),
+         municipal = as.double(as.character(municipal)),
+         municipal = case_when(is.na(municipal)==TRUE ~ 0,
+                             TRUE ~ municipal),
+         FederalConsFounded = case_when(is.na(FederalConsFounded)==TRUE ~ 0,
+                               TRUE ~ FederalConsFounded),
+         StateConsFounded = case_when(is.na(StateConsFounded)==TRUE ~ 0,
+                               TRUE ~ StateConsFounded),
+         MuniConsFounded = case_when(is.na(MuniConsFounded)==TRUE ~ 0,
+                               TRUE ~ MuniConsFounded)
+         ) %>% 
+  arrange(Codigo, Year) %>% 
+  group_by(Codigo) %>% 
+  mutate(FederalConsArea = cumsum(federal),
+         StateConsArea = cumsum(estadual),
+         MuniConsArea = cumsum(municipal)) %>% 
+  select(-c(estadual, federal, municipal))
+  
+
+eft <- read_csv(here("data", "raw", "EFT.csv")) %>% 
+  rename(ICMS_E = `ICMS-E`,
+         Sigla = X1) 
+#### create state eft panel
+
+state_panel  <- expand_grid('Sigla' = unique(data$Sigla), 'Year' = unique(data$Year)) %>% 
+  mutate(Year = as.double(as.character(Year)),
+         ICME_E = 0, 
+         EFT_Enactment = 0)
+
+for(i in 1:dim(eft)[2]){
+  state_panel$ICME_E[state_panel$Sigla == eft$Sigla[i] & state_panel$Year == eft$ICMS_E[i]] <- 1
+  state_panel$EFT_Enactment[state_panel$Sigla == eft$Sigla[i] & state_panel$Year == eft$Enactment[i]] <- 1
+}
+
+save(data, file = here("data", "municipal", "muni_merged.rda"))
+
+
+
