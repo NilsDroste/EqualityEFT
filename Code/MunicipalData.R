@@ -116,7 +116,7 @@ eft <- st_as_sf(todas) %>%
   st_make_valid() %>% 
   mutate(Category = case_when(CATEGORI3 == "Reserva Particular do Patrim\xf4nio Natural" ~ "SUU",
                               CATEGORI3 == "\xc1rea de Prote\xe7\xe3o Ambiental" ~ "SUU",
-                              CATEGORI3 == "Parque" ~ "PI",
+                              CATEGORI3 == "Parque" ~ "P",
                               CATEGORI3 == "Floresta" ~ "SUU",
                               CATEGORI3 == "Esta\xe7\xe3o Ecol\xf3gica" ~ "P",
                               CATEGORI3 == "\xc1rea de Relevante Interesse Ecol\xf3gico" ~ "SUU",
@@ -136,7 +136,8 @@ municipios <- unique(muni$code_muni)
 
 sf_use_s2(FALSE)
 robust_eft <- function(muni){
-  tryCatch({intersection <- st_intersection(muni, eft) %>%
+  #tryCatch({
+  intersection <- st_intersection(st_make_valid(muni), eft) %>%
     mutate(land_m2  = geom %>% st_zm() %>% st_area(),
            ANO_CRIA6 = as.double(as.character(ANO_CRIA6)),
            year = case_when(ANO_CRIA6 < 1990 ~ 1990,
@@ -150,9 +151,9 @@ robust_eft <- function(muni){
     intersection <- tibble(ESFERA5 = NA, year = NA, land_m2 = NA, code_muni = municipios[i])
   }
   intersection
-  },
-  error = function(e) {tibble(ESFERA5 = "Error", year = NA, land_m2 = NA, code_muni = muni$code_muni)}
-  )
+  #},
+  #error = function(e) {tibble(ESFERA5 = "Error", year = NA, land_m2 = NA, code_muni = muni$code_muni)}
+  #)
 }
 
 municipality_eft <- tibble()
@@ -180,13 +181,6 @@ efts <- municipality_eft %>%
          
          Muni_P_Founded = case_when(is.na(municipal_P)==FALSE ~1,
                                      TRUE ~ 0),
-         Federal_PI_Founded = case_when(is.na(federal_PI)==FALSE ~1,
-                                       TRUE ~ 0),
-         State_PI_Founded = case_when(is.na(estadual_PI)==FALSE ~1,
-                                     TRUE ~ 0),
-         
-         Muni_PI_Founded = case_when(is.na(municipal_PI)==FALSE ~1,
-                                    TRUE ~ 0),
          Federal_SUU_Founded = case_when(is.na(federal_SUU)==FALSE ~1,
                                        TRUE ~ 0),
          State_SUU_Founded = case_when(is.na(estadual_SUU)==FALSE ~1,
@@ -204,60 +198,42 @@ data <- data %>%
   mutate(federal_P = as.double(as.character(federal_P)),
          federal_P = case_when(is.na(federal_P)==TRUE ~ 0,
                              TRUE ~ federal_P),
-         federal_PI = as.double(as.character(federal_PI)),
-         federal_PI = case_when(is.na(federal_PI)==TRUE ~ 0,
-                               TRUE ~ federal_PI),
          federal_SUU = as.double(as.character(federal_SUU)),
          federal_SUU = case_when(is.na(federal_SUU)==TRUE ~ 0,
                                TRUE ~ federal_SUU),
          estadual_P = as.double(as.character(estadual_P)),
          estadual_P = case_when(is.na(estadual_P)==TRUE ~ 0,
                              TRUE ~ estadual_P),
-         estadual_PI = as.double(as.character(estadual_PI)),
-         estadual_PI = case_when(is.na(estadual_PI)==TRUE ~ 0,
-                                TRUE ~ estadual_PI),
          estadual_SUU = as.double(as.character(estadual_SUU)),
          estadual_SUU = case_when(is.na(estadual_SUU)==TRUE ~ 0,
                                 TRUE ~ estadual_SUU),
          municipal_P = as.double(as.character(municipal_P)),
          municipal_P = case_when(is.na(municipal_P)==TRUE ~ 0,
                              TRUE ~ municipal_P),
-         municipal_PI = as.double(as.character(municipal_PI)),
-         municipal_PI = case_when(is.na(municipal_PI)==TRUE ~ 0,
-                                 TRUE ~ municipal_PI),
          municipal_SUU = as.double(as.character(municipal_SUU)),
          municipal_SUU = case_when(is.na(municipal_SUU)==TRUE ~ 0,
                                  TRUE ~ municipal_SUU),
          Federal_P_Founded = case_when(is.na(Federal_P_Founded)==TRUE ~ 0,
                                TRUE ~ Federal_P_Founded),
-         Federal_PI_Founded = case_when(is.na(Federal_PI_Founded)==TRUE ~ 0,
-                                        TRUE ~ Federal_PI_Founded),
          Federal_SUU_Founded = case_when(is.na(Federal_SUU_Founded)==TRUE ~ 0,
                                         TRUE ~ Federal_SUU_Founded),
          State_P_Founded = case_when(is.na(State_P_Founded)==TRUE ~ 0,
                                TRUE ~ State_P_Founded),
-         State_PI_Founded = case_when(is.na(State_PI_Founded)==TRUE ~ 0,
-                                     TRUE ~ State_PI_Founded),
          State_SUU_Founded = case_when(is.na(State_SUU_Founded)==TRUE ~ 0,
                                      TRUE ~ State_SUU_Founded),
          Muni_P_Founded = case_when(is.na(Muni_P_Founded)==TRUE ~ 0,
                                TRUE ~ Muni_P_Founded),
-         Muni_PI_Founded = case_when(is.na(Muni_PI_Founded)==TRUE ~ 0,
-                                    TRUE ~ Muni_PI_Founded),
          Muni_SUU_Founded = case_when(is.na(Muni_SUU_Founded)==TRUE ~ 0,
                                     TRUE ~ Muni_SUU_Founded)) %>% 
   arrange(Codigo, Year) %>% 
   group_by(Codigo) %>% 
   mutate(Federal_P_Area = cumsum(federal_P),
-         Federal_PI_Area = cumsum(federal_PI),
          Federal_SUU_Area = cumsum(federal_SUU),
          State_P_Area = cumsum(estadual_P),
-         State_PI_Area = cumsum(estadual_PI),
          State_SUU_Area = cumsum(estadual_SUU),
          Muni_P_Area = cumsum(municipal_P),
-         Muni_PI_Area = cumsum(municipal_PI),
          Muni_SUU_Area = cumsum(municipal_SUU)) %>% 
-  select(-c(estadual_P, estadual_PI, estadual_SUU, federal_P, federal_PI, federal_SUU, municipal_P, municipal_PI, municipal_SUU))
+  select(-c(estadual_P, estadual_SUU, federal_P, federal_SUU, municipal_P, municipal_SUU))
   
 
 eft <- read_csv(here("data", "raw", "EFT.csv")) %>% 
