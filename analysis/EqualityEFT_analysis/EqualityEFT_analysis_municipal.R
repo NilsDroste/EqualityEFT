@@ -125,11 +125,11 @@ summary(fixest::fixef(m3.mun.fix))
 
 m3a.mun.fix_reduc <- fixest::feglm(municipal_sustainableuse_area_share ~ eft_enact + HarvestedArea + log_federal_sustain_area_share + log_state_sustain_area_share + log_federal_prot_area_share + log_state_prot_area_share | as.factor(Codigo) + ID[Year] + arpa+ama+cer+caa+mat+pan+pam,family = "poisson", data=full_df)
 summary(m3a.mun.fix_reduc, se="fourway")
-summary(fixest::fixef(m3a.mun.fix_red))
+summary(fixest::fixef(m3a.mun.fix_reduc))
 
 m3b.mun.fix_red <- fixest::feglm(municipal_sustainableuse_area_share ~ eft_enact + log_federal_sustain_area_share + log_state_sustain_area_share + log_federal_prot_area_share + log_state_prot_area_share | as.factor(Codigo) + ID + Year + arpa+ama+cer+caa+mat+pan+pam,family = "poisson", data=full_df)
-summary(m3b.mun.fix_red, se="fourway")
-summary(fixest::fixef(m3b.mun.fix_red))
+summary(m3b.mun.fix_reduc, se="fourway")
+summary(fixest::fixef(m3b.mun.fix_reduc))
 
 m4.mun.fix <- fixest::feglm(municipal_sustainableuse_area_share ~ eft_enact + HarvestedArea + log_federal_sustain_area_share + log_state_sustain_area_share + log_federal_prot_area_share + log_state_prot_area_share + log_muni_prot_area_share| as.factor(Codigo) + ID^Year + arpa+ama+cer+caa+mat+pan+pam,family = "poisson", data=full_df) # not working because of collinearity
 summary(m4.mun.fix, se="fourway")
@@ -184,6 +184,36 @@ load(paste0(here() %>% str_remove("analysis/EqualityEFT_analysis"), "/data/df_an
 df_PA_major <- left_join(full_df, df_annual_mayors %>% select(1,5:ncol(df_annual_mayors))%>% rename(Codigo=IBGE_code, Year=year) %>% mutate(Codigo = Codigo %>% as.numeric()) %>% as_tibble())
 
 # sustainable use areas
-m3a.mun.fix_red <- fixest::feglm(municipal_sustainableuse_area_share ~ eft_enact + HarvestedArea + log_federal_sustain_area_share + log_state_sustain_area_share + log_federal_prot_area_share + log_state_prot_area_share + maygov_sameparty + maygov_samecoalition | as.factor(Codigo) + ID[Year] + arpa+ama+cer+caa+mat+pan+pam,family = "poisson", data=full_df)
-summary(m3a.mun.fix_red, se="fourway")
+m3a.mun.fix_reduc_party <- fixest::feglm(municipal_sustainableuse_area_share ~ eft_enact + HarvestedArea + log_federal_sustain_area_share + log_state_sustain_area_share + log_federal_prot_area_share + log_state_prot_area_share + maygov_sameparty + maygov_samecoalition | as.factor(Codigo) + ID[Year] + arpa+ama+cer+caa+mat+pan+pam,family = "poisson", data=df_PA_major) # changes if Harvested Area is e.g. controlled for such that we have a larger data set.
+summary(m3a.mun.fix_reduc_party, se="fourway")
+
+m3a.mun.fix_reduc_party_interact <- fixest::feglm(municipal_sustainableuse_area_share ~  eft_enact*maygov_sameparty + eft_enact*maygov_samecoalition + HarvestedArea + log_federal_sustain_area_share + log_state_sustain_area_share + log_federal_prot_area_share + log_state_prot_area_share | as.factor(Codigo) + ID[Year] + arpa+ama+cer+caa+mat+pan+pam, family = "poisson", data=df_PA_major) # changes if Harvested Area is e.g. controlled for such that we have a larger data set.
+summary(m3a.mun.fix_reduc_party_interact, se="fourway")
+
+
+# prot area
+m2.mun.fix_prot_party <- fixest::feglm(municipal_protected_area_share ~ eft_enact + HarvestedArea + log_federal_sustain_area_share + log_state_sustain_area_share + log_federal_prot_area_share + log_state_prot_area_share + log_muni_sustain_area_share + maygov_sameparty + maygov_samecoalition | as.factor(Codigo) + ID[Year] + arpa+ama+cer+caa+mat+pan+pam,family = "poisson", data=df_PA_major)
+summary(m2.mun.fix_prot_party, se="fourway") # changes if Harvested Area is e.g. controlled for such that we have a larger data set.
+
+m2.mun.fix_prot_party_interact <- fixest::feglm(municipal_protected_area_share ~ eft_enact*maygov_sameparty + eft_enact*maygov_samecoalition + HarvestedArea + log_federal_sustain_area_share + log_state_sustain_area_share + log_federal_prot_area_share + log_state_prot_area_share + log_muni_sustain_area_share + maygov_sameparty + maygov_samecoalition | as.factor(Codigo) + ID[Year] + arpa+ama+cer+caa+mat+pan+pam,family = "poisson", data=df_PA_major)
+summary(m2.mun.fix_prot_party_interact, se="fourway") # changes if Harvested Area is e.g. controlled for such that we have a larger data set.
+
+m2.mun.fix_prot_party_interact_threeway <- fixest::feglm(municipal_protected_area_share ~ eft_enact*maygov_sameparty*maygov_samecoalition  + HarvestedArea   + log_federal_sustain_area_share + log_state_sustain_area_share + log_federal_prot_area_share + log_state_prot_area_share + log_muni_sustain_area_share + maygov_sameparty + maygov_samecoalition | as.factor(Codigo) + ID[Year] + arpa+ama+cer+caa+mat+pan+pam,family = "poisson", data=df_PA_major)
+summary(m2.mun.fix_prot_party_interact_threeway, se="fourway") # changes if Harvested Area is e.g. controlled for such that we have a larger data set.
+
+
+
+# poverty / equality
+
+m2.mun.fix_reveneue_party_interact <- fixest::feols(MunicipalTaxesRevenue ~ eft_enact*maygov_sameparty + eft_enact*maygov_samecoalition  + HarvestedArea  + log_federal_sustain_area_share + log_state_sustain_area_share + log_federal_prot_area_share + log_state_prot_area_share + log_muni_sustain_area_share + maygov_sameparty + maygov_samecoalition | as.factor(Codigo) + ID[Year] + arpa+ama+cer+caa+mat+pan+pam,data=df_PA_major)
+summary(m2.mun.fix_reveneue_party_interact, se="fourway") 
+
+# create variable poor
+df_PA_major <- df_PA_major %>% group_by(ID,Year) %>% mutate_at(vars(MunicipalTaxesRevenue), list(Poor = function(x) cut(percent_rank(x), c(-Inf,.25,Inf), labels = c(0,1)))) %>% ungroup()
+
+m2.mun.fix_reveneue_party_poor <- fixest::feols(MunicipalTaxesRevenue ~ eft_enact*Poor + log_federal_sustain_area_share + log_state_sustain_area_share + log_federal_prot_area_share + log_state_prot_area_share + log_muni_sustain_area_share + maygov_sameparty + maygov_samecoalition | as.factor(Codigo) + ID[Year] + arpa+ama+cer+caa+mat+pan+pam, data=df_PA_major)
+summary(m2.mun.fix_reveneue_party_poor, se="fourway") 
+
+m2.mun.fix_reveneue_party_interact_poor <- fixest::feols(MunicipalTaxesRevenue ~ eft_enact*maygov_sameparty*maygov_samecoalition*Poor + log_federal_sustain_area_share + log_state_sustain_area_share + log_federal_prot_area_share + log_state_prot_area_share + log_muni_sustain_area_share + maygov_sameparty + maygov_samecoalition | as.factor(Codigo) + ID[Year] + arpa+ama+cer+caa+mat+pan+pam, data=df_PA_major)
+summary(m2.mun.fix_reveneue_party_interact_poor, se="fourway") 
 
