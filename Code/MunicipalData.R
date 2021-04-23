@@ -103,7 +103,7 @@ data <- data %>%
   left_join(RevenueCurrentTransfers, by = c("Codigo", "Year"))
 
 summary(data)
-save(data, file = here("data", "municipal", "muni_merged.rda"))
+save(data, file = here("data", "municipal", "muni_merged_preEFT.rda"))
 
 ################# EFT shapefiles
 load(here("..", "..", "..", "Dropbox", "EFT_Shape", "Todas", "eft.rda"))
@@ -124,26 +124,27 @@ eft <- st_as_sf(todas) %>%
                               CATEGORI3 == "Ref\xfagio de Vida Silvestre" ~ "P",
                               CATEGORI3 == "Monumento Natural" ~ "P",
                               CATEGORI3 == "Reserva Biol\xf3gica" ~ "P",
-                              CATEGORI3 == "Reserva de Desenvolvimento Sustent\xe1vel" ~ "SUU"))
+                              CATEGORI3 == "Reserva de Desenvolvimento Sustent\xe1vel" ~ "SUU"),
+         ANO_CRIA6 = as.double(as.character(str_sub(ANO_CRIA6,-4,-1))))
 
 
 min(eft$ANO_CRIA6)
-years <- seq(1990, 2019, 1)
+years <- seq(1985, 2019, 1)
 
 
 
 municipios <- unique(muni$code_muni)
 
 sf_use_s2(FALSE)
-robust_eft <- function(muni){
+robust_eft <- function(muncip){
   #tryCatch({
-  intersection <- st_intersection(st_make_valid(muni), eft) %>%
+  intersection <- st_intersection(st_make_valid(muncip), eft) %>%
     mutate(land_m2  = geom %>% st_zm() %>% st_area(),
            ANO_CRIA6 = as.double(as.character(ANO_CRIA6)),
-           year = case_when(ANO_CRIA6 < 1990 ~ 1990,
+           year = case_when(ANO_CRIA6 < 1985 ~ 1985,
                             TRUE ~ ANO_CRIA6)) %>%
     group_by(ESFERA5, Category, year) %>% 
-    summarize(land_m2  = sum(land_m2)) %>% 
+    summarize(land_m2  = sum(land_m2), PA_count = n_distinct(NOME_UC1)) %>% 
     as_tibble() %>% 
     dplyr::select(-geom) %>% 
     mutate(code_muni = municipios[i])
@@ -168,25 +169,25 @@ save(municipality_eft, file = here("..", "..", "..", "Dropbox", "EFT_Shape", "To
 
 
 ##### now this has to be reshaped and merged to other municipal data
-load(here("data", "municipal", "muni_merged.rda"))
+load(here("data", "municipal", "muni_merged_preEFT.rda"))
 load(here("..", "..", "..", "Dropbox", "EFT_Shape", "Todas","eft_intersected.rda"))
 
 efts <- municipality_eft %>% 
   filter(is.na(ESFERA5)==FALSE) %>% 
-  pivot_wider(id_cols = c(code_muni,year), names_from = c(ESFERA5, Category), names_sep = "_", values_from = land_m2) %>% 
-  mutate(Federal_P_Founded = case_when(is.na(federal_P)==FALSE ~1,
+  pivot_wider(id_cols = c(code_muni,year), names_from = c(ESFERA5, Category), names_sep = "_", values_from = c(land_m2, PA_count)) %>% 
+  mutate(Federal_P_Founded = case_when(is.na(land_m2_federal_P)==FALSE ~1,
                                      TRUE ~ 0),
-         State_P_Founded = case_when(is.na(estadual_P)==FALSE ~1,
+         State_P_Founded = case_when(is.na(land_m2_estadual_P)==FALSE ~1,
                                    TRUE ~ 0),
          
-         Muni_P_Founded = case_when(is.na(municipal_P)==FALSE ~1,
+         Muni_P_Founded = case_when(is.na(land_m2_municipal_P)==FALSE ~1,
                                      TRUE ~ 0),
-         Federal_SUU_Founded = case_when(is.na(federal_SUU)==FALSE ~1,
+         Federal_SUU_Founded = case_when(is.na(land_m2_federal_SUU)==FALSE ~1,
                                        TRUE ~ 0),
-         State_SUU_Founded = case_when(is.na(estadual_SUU)==FALSE ~1,
+         State_SUU_Founded = case_when(is.na(land_m2_estadual_SUU)==FALSE ~1,
                                      TRUE ~ 0),
          
-         Muni_SUU_Founded = case_when(is.na(municipal_SUU)==FALSE ~1,
+         Muni_SUU_Founded = case_when(is.na(land_m2_municipal_SUU)==FALSE ~1,
                                     TRUE ~ 0),
          year = as.double(as.character(year))) %>% 
   rename(Codigo = code_muni,
@@ -195,24 +196,42 @@ efts <- municipality_eft %>%
 data <- data %>% 
   mutate(Year = as.double(as.character(Year))) %>% 
   left_join(efts, by = c("Codigo", "Year")) %>% 
-  mutate(federal_P = as.double(as.character(federal_P)),
-         federal_P = case_when(is.na(federal_P)==TRUE ~ 0,
-                             TRUE ~ federal_P),
-         federal_SUU = as.double(as.character(federal_SUU)),
-         federal_SUU = case_when(is.na(federal_SUU)==TRUE ~ 0,
-                               TRUE ~ federal_SUU),
-         estadual_P = as.double(as.character(estadual_P)),
-         estadual_P = case_when(is.na(estadual_P)==TRUE ~ 0,
-                             TRUE ~ estadual_P),
-         estadual_SUU = as.double(as.character(estadual_SUU)),
-         estadual_SUU = case_when(is.na(estadual_SUU)==TRUE ~ 0,
-                                TRUE ~ estadual_SUU),
-         municipal_P = as.double(as.character(municipal_P)),
-         municipal_P = case_when(is.na(municipal_P)==TRUE ~ 0,
-                             TRUE ~ municipal_P),
-         municipal_SUU = as.double(as.character(municipal_SUU)),
-         municipal_SUU = case_when(is.na(municipal_SUU)==TRUE ~ 0,
-                                 TRUE ~ municipal_SUU),
+  mutate(land_m2_federal_P = as.double(as.character(land_m2_federal_P)),
+         land_m2_federal_P = case_when(is.na(land_m2_federal_P)==TRUE ~ 0,
+                             TRUE ~ land_m2_federal_P),
+         land_m2_federal_SUU = as.double(as.character(land_m2_federal_SUU)),
+         land_m2_federal_SUU = case_when(is.na(land_m2_federal_SUU)==TRUE ~ 0,
+                               TRUE ~ land_m2_federal_SUU),
+         land_m2_estadual_P = as.double(as.character(land_m2_estadual_P)),
+         land_m2_estadual_P = case_when(is.na(land_m2_estadual_P)==TRUE ~ 0,
+                             TRUE ~ land_m2_estadual_P),
+         land_m2_estadual_SUU = as.double(as.character(land_m2_estadual_SUU)),
+         land_m2_estadual_SUU = case_when(is.na(land_m2_estadual_SUU)==TRUE ~ 0,
+                                TRUE ~ land_m2_estadual_SUU),
+         land_m2_municipal_P = as.double(as.character(land_m2_municipal_P)),
+         land_m2_municipal_P = case_when(is.na(land_m2_municipal_P)==TRUE ~ 0,
+                             TRUE ~ land_m2_municipal_P),
+         land_m2_municipal_SUU = as.double(as.character(land_m2_municipal_SUU)),
+         land_m2_municipal_SUU = case_when(is.na(land_m2_municipal_SUU)==TRUE ~ 0,
+                                 TRUE ~ land_m2_municipal_SUU),
+         PA_count_federal_P = as.double(as.character(PA_count_federal_P)),
+         PA_count_federal_P = case_when(is.na(PA_count_federal_P)==TRUE ~ 0,
+                                       TRUE ~ PA_count_federal_P),
+         PA_count_federal_SUU = as.double(as.character(PA_count_federal_SUU)),
+         PA_count_federal_SUU = case_when(is.na(PA_count_federal_SUU)==TRUE ~ 0,
+                                         TRUE ~ PA_count_federal_SUU),
+         PA_count_estadual_P = as.double(as.character(PA_count_estadual_P)),
+         PA_count_estadual_P = case_when(is.na(PA_count_estadual_P)==TRUE ~ 0,
+                                        TRUE ~ PA_count_estadual_P),
+         PA_count_estadual_SUU = as.double(as.character(PA_count_estadual_SUU)),
+         PA_count_estadual_SUU = case_when(is.na(PA_count_estadual_SUU)==TRUE ~ 0,
+                                          TRUE ~ PA_count_estadual_SUU),
+         PA_count_municipal_P = as.double(as.character(PA_count_municipal_P)),
+         PA_count_municipal_P = case_when(is.na(PA_count_municipal_P)==TRUE ~ 0,
+                                         TRUE ~ PA_count_municipal_P),
+         PA_count_municipal_SUU = as.double(as.character(PA_count_municipal_SUU)),
+         PA_count_municipal_SUU = case_when(is.na(PA_count_municipal_SUU)==TRUE ~ 0,
+                                           TRUE ~ PA_count_municipal_SUU),
          Federal_P_Founded = case_when(is.na(Federal_P_Founded)==TRUE ~ 0,
                                TRUE ~ Federal_P_Founded),
          Federal_SUU_Founded = case_when(is.na(Federal_SUU_Founded)==TRUE ~ 0,
@@ -227,13 +246,19 @@ data <- data %>%
                                     TRUE ~ Muni_SUU_Founded)) %>% 
   arrange(Codigo, Year) %>% 
   group_by(Codigo) %>% 
-  mutate(Federal_P_Area = cumsum(federal_P),
-         Federal_SUU_Area = cumsum(federal_SUU),
-         State_P_Area = cumsum(estadual_P),
-         State_SUU_Area = cumsum(estadual_SUU),
-         Muni_P_Area = cumsum(municipal_P),
-         Muni_SUU_Area = cumsum(municipal_SUU)) %>% 
-  select(-c(estadual_P, estadual_SUU, federal_P, federal_SUU, municipal_P, municipal_SUU))
+  mutate(Federal_P_Area = cumsum(land_m2_federal_P),
+         Federal_SUU_Area = cumsum(land_m2_federal_SUU),
+         State_P_Area = cumsum(land_m2_estadual_P),
+         State_SUU_Area = cumsum(land_m2_estadual_SUU),
+         Muni_P_Area = cumsum(land_m2_municipal_P),
+         Muni_SUU_Area = cumsum(land_m2_municipal_SUU),
+         Federal_P_Count = cumsum(PA_count_federal_P),
+         Federal_SUU_Count = cumsum(PA_count_federal_SUU),
+         State_P_Count = cumsum(PA_count_estadual_P),
+         State_SUU_Count = cumsum(PA_count_estadual_SUU),
+         Muni_P_Count = cumsum(PA_count_municipal_P),
+         Muni_SUU_Count = cumsum(PA_count_municipal_SUU)) %>% 
+  select(-c(land_m2_estadual_P, land_m2_estadual_SUU, land_m2_federal_P, land_m2_federal_SUU, land_m2_municipal_P, land_m2_municipal_SUU, PA_count_estadual_P, PA_count_estadual_SUU, PA_count_federal_P, PA_count_federal_SUU, PA_count_municipal_P, PA_count_municipal_SUU))
   
 
 eft <- read_csv(here("data", "raw", "EFT.csv")) %>% 
